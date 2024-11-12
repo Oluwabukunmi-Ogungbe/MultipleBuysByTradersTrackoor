@@ -24,6 +24,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 
+PORT = int(os.getenv("PORT", 8443))
+
+
 # Create Telethon client
 telethon_client = TelegramClient('test', API_ID, API_HASH)
 
@@ -271,9 +274,9 @@ async def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
 
-    WEBHOOK_URL = "https://ae59-105-113-126-50.ngrok-free.app"
-    WEBHOOK_PORT = 8443
-
+    # Get the webhook URL from environment variable or use a default for local testing
+    WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL", "")
+    
     try:
         await application.bot.set_webhook(
             url=f"{WEBHOOK_URL}/{BOT_TOKEN}",
@@ -294,17 +297,15 @@ def run_bot():
     )
 
     try:
-        if sys.platform == 'win32':
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
         loop = asyncio.get_event_loop()
         application = loop.run_until_complete(main())
         
+        # Updated webhook configuration for Render
         application.run_webhook(
-            listen="0.0.0.0",
-            port=8443,
+            listen="0.0.0.0",  # Listen on all available network interfaces
+            port=PORT,         # Use the PORT from environment variable
             url_path=BOT_TOKEN,
-            webhook_url=f"https://ae59-105-113-126-50.ngrok-free.app/{BOT_TOKEN}",
+            webhook_url=f"{os.getenv('RENDER_EXTERNAL_URL', '')}/{BOT_TOKEN}",
             drop_pending_updates=True
         )
 
