@@ -21,7 +21,7 @@ nest_asyncio.apply()
 # Telegram bot configuration
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
-PORT = int(os.getenv("PORT", 8443))
+PORT = int(os.getenv("PORT", 8000))
 # Telethon client configuration
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_ID = int(os.getenv("API_ID"))
