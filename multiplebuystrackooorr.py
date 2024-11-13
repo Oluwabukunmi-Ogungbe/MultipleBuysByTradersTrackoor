@@ -12,7 +12,7 @@ from collections import defaultdict
 from keep_alive import keep_alive
 
 #{os.getenv('RENDER_EXTERNAL_URL', '')}
-#PORT = int(os.getenv("PORT", 8443))
+#PORT = int(os.getenv("PORT", 8000))
 
 keep_alive()
 
