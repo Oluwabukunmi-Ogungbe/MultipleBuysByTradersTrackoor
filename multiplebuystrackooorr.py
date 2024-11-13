@@ -11,6 +11,9 @@ import nest_asyncio
 from collections import defaultdict
 from keep_alive import keep_alive
 
+#{os.getenv('RENDER_EXTERNAL_URL', '')}
+#PORT = int(os.getenv("PORT", 8443))
+
 keep_alive()
 
 nest_asyncio.apply()
@@ -18,13 +21,13 @@ nest_asyncio.apply()
 # Telegram bot configuration
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
-
+PORT = int(os.getenv("PORT", 8443))
 # Telethon client configuration
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 
-PORT = int(os.getenv("PORT", 8443))
+
 
 
 # Create Telethon client
@@ -182,16 +185,22 @@ async def extract_last_trader_messages(chat_link, limit):
         return formatted_messages
 
 async def stop(update, context):
-    """Stop the continuous scraping"""
+    global continue_scraping  # Ensure we're using the global variable
     if not await check_authorization(update):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=f"You are not eligible to use the bot. Your username: {update.effective_user.username}"
         )
         return
-    
-    global continue_scraping
-    continue_scraping = False
+
+    if not continue_scraping:  # Check if the bot is already stopped
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Bot already stopped."
+        )
+        return
+
+    continue_scraping = False  # Stop the scraping process now
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Stopping continuous scraping. The current round will complete before stopping."
@@ -247,15 +256,19 @@ async def continuous_scraping(update, context):
 
 async def start(update, context):
     """Start the continuous message extraction process"""
-    if not await check_authorization(update):
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"You are not eligible to use the bot. Your username: {update.effective_user.username}"
-        )
-        return
-    
-    # Clear the last processed messages when starting a new session
-    last_processed_messages.clear()
+    if (await check_authorization(update)):
+        if update.message.text.startswith(f"@{BOT_TOKEN.split(':')[0]}"):
+            last_processed_messages.clear()
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Starting continuous message scraping. Use /stop to end the process."
+            )
+            await continuous_scraping(update, context)
+        else:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Please use the command in the format '@YourBotUsername start'"
+            )
     
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -275,7 +288,7 @@ async def main():
     application.add_handler(CommandHandler("stop", stop))
 
     # Get the webhook URL from environment variable or use a default for local testing
-    WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL", "")
+    WEBHOOK_URL = "https://{os.getenv('RENDER_SERVICE_NAME')}.onrender.com"
     
     try:
         await application.bot.set_webhook(
@@ -305,7 +318,7 @@ def run_bot():
             listen="0.0.0.0",  # Listen on all available network interfaces
             port=PORT,         # Use the PORT from environment variable
             url_path=BOT_TOKEN,
-            webhook_url=f"{os.getenv('RENDER_EXTERNAL_URL', '')}/{BOT_TOKEN}",
+            webhook_url=f"https://{os.getenv('RENDER_SERVICE_NAME')}.onrender.com/{BOT_TOKEN}",
             drop_pending_updates=True
         )
 
